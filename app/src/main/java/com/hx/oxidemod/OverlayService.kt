@@ -7,19 +7,22 @@ import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.view.*
 import android.widget.*
-import kotlin.math.abs
 
 class OverlayService : Service() {
     private lateinit var wm: WindowManager
-    private var buttonView: View? = null
+    private var islandView: View? = null
     private var panelView: View? = null
-    private lateinit var btnParams: WindowManager.LayoutParams
+    private lateinit var islandParams: WindowManager.LayoutParams
     private lateinit var panelParams: WindowManager.LayoutParams
     
-    private var selectedCategoryIndex = 0
+    private var selectedCatIndex = 0
+    private var selectedSubIndex = 0
+    private var islandText: TextView? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -28,7 +31,7 @@ class OverlayService : Service() {
         startForeground(1, buildNotification())
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         PatchEngine.start()
-        showButton()
+        showIsland()
     }
 
     override fun onDestroy() {
@@ -49,49 +52,55 @@ class OverlayService : Service() {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
-    private fun showButton() {
-        if (buttonView != null) return
-        val tv = TextView(this).apply {
-            text = "≡"
-            setTextColor(Color.WHITE)
-            textSize = 24f
-            gravity = Gravity.CENTER
+    private fun showIsland() {
+        if (islandView != null) return
+        val ctx = this
+        
+        val island = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(8))
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1E1E1E"))
-                cornerRadius = dp(50).toFloat()
-                setStroke(dp(2), Color.parseColor("#4A90E2"))
+                setColor(Color.parseColor("#000000"))
+                cornerRadius = dp(30).toFloat()
             }
         }
-        btnParams = WindowManager.LayoutParams(
-            dp(56), dp(56),
+
+        island.addView(TextView(ctx).apply {
+            text = "👁️"
+            textSize = 14f
+            setPadding(0, 0, dp(8), 0)
+        })
+
+        islandText = TextView(ctx).apply {
+            text = "0 ГРАВЦІВ"
+            setTextColor(Color.WHITE)
+            textSize = 12f
+            setTypeface(null, Typeface.BOLD)
+        }
+        island.addView(islandText)
+
+        islandParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= 26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.START; x = dp(16); y = dp(100) }
+            PixelFormat.TRANSLUCENT).apply { 
+                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                y = dp(50) 
+            }
         
-        tv.setOnTouchListener(buttonTouch())
-        buttonView = tv
-        wm.addView(tv, btnParams)
-    }
+        island.setOnClickListener { togglePanel() }
+        islandView = island
+        wm.addView(island, islandParams)
 
-    private var downX = 0f; private var downY = 0f
-    private var initX = 0; private var initY = 0; private var moved = false
-
-    private fun buttonTouch() = View.OnTouchListener { _, ev ->
-        when (ev.action) {
-            MotionEvent.ACTION_DOWN -> {
-                downX = ev.rawX; downY = ev.rawY
-                initX = btnParams.x; initY = btnParams.y; moved = false; true
+        val handler = Handler(Looper.getMainLooper())
+        handler.post(object : Runnable {
+            override fun run() {
+                islandText?.text = "${PatchEngine.playersNearby} ГРАВЦІВ"
+                handler.postDelayed(this, 1000)
             }
-            MotionEvent.ACTION_MOVE -> {
-                val dx = ev.rawX - downX; val dy = ev.rawY - downY
-                if (abs(dx) + abs(dy) > 16f) moved = true
-                btnParams.x = initX + dx.toInt(); btnParams.y = initY + dy.toInt()
-                wm.updateViewLayout(buttonView, btnParams); true
-            }
-            MotionEvent.ACTION_UP -> { if (!moved) togglePanel(); true }
-            else -> false
-        }
+        })
     }
 
     private fun togglePanel() { if (panelView != null) removePanel() else showPanel() }
@@ -101,47 +110,36 @@ class OverlayService : Service() {
         val mainLayout = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#0F0F0F"))
-                cornerRadius = dp(16).toFloat()
-                setStroke(dp(1), Color.parseColor("#2C2C2C"))
+                setColor(Color.parseColor("#F5F5F7"))
+                cornerRadius = dp(20).toFloat()
             }
         }
 
-        // --- Header ---
         val header = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(12), dp(16), dp(12))
+            setPadding(dp(20), dp(16), dp(20), dp(16))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#000000"))
+                cornerRadii = floatArrayOf(dp(20).toFloat(), dp(20).toFloat(), dp(20).toFloat(), dp(20).toFloat(), 0f, 0f, 0f, 0f)
+            }
         }
-        
         header.addView(TextView(ctx).apply {
-            text = "OXIDE"
-            setTextColor(Color.parseColor("#4A90E2"))
-            textSize = 18f
-            setTypeface(null, Typeface.BOLD)
-        })
-        header.addView(TextView(ctx).apply {
-            text = " TOOLS"
+            text = "Avis tools style"
             setTextColor(Color.WHITE)
-            textSize = 18f
+            textSize = 16f
             setTypeface(null, Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
         header.addView(TextView(ctx).apply {
             text = "✕"
-            setTextColor(Color.GRAY)
-            textSize = 20f
+            setTextColor(Color.LTGRAY)
+            textSize = 18f
             setPadding(dp(16), 0, 0, 0)
             setOnClickListener { removePanel() }
         })
         mainLayout.addView(header)
 
-        // Divider
-        mainLayout.addView(View(ctx).apply {
-            setBackgroundColor(Color.parseColor("#2C2C2C"))
-        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)))
-
-        // --- Body ---
         val body = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(12), dp(12), dp(12), dp(12))
@@ -149,90 +147,108 @@ class OverlayService : Service() {
 
         val sidebar = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { setColor(Color.parseColor("#EAEAEA")); cornerRadius = dp(12).toFloat() }
+            setPadding(dp(4), dp(8), dp(4), dp(8))
         }
-        body.addView(sidebar, LinearLayout.LayoutParams(dp(100), LinearLayout.LayoutParams.MATCH_PARENT))
+        body.addView(sidebar, LinearLayout.LayoutParams(dp(110), LinearLayout.LayoutParams.MATCH_PARENT))
 
-        val contentContainer = FrameLayout(ctx).apply {
+        val contentWrapper = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
             setPadding(dp(12), 0, 0, 0)
         }
-        body.addView(contentContainer, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
+        body.addView(contentWrapper, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
+
+        val subTabsScroll = HorizontalScrollView(ctx)
+        val subTabsLayout = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, 0, 0, dp(8)) }
+        subTabsScroll.addView(subTabsLayout)
+        contentWrapper.addView(subTabsScroll)
+
+        val contentContainer = FrameLayout(ctx)
+        contentWrapper.addView(contentContainer, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
         fun buildContent() {
+            subTabsLayout.removeAllViews()
+            val cat = Features.menuData[selectedCatIndex]
+            for ((i, sub) in cat.subs.withIndex()) {
+                val chip = TextView(ctx).apply {
+                    text = sub.name
+                    setPadding(dp(12), dp(6), dp(12), dp(6))
+                    textSize = 12f
+                    setTextColor(if (i == selectedSubIndex) Color.WHITE else Color.GRAY)
+                    background = GradientDrawable().apply {
+                        setColor(if (i == selectedSubIndex) Color.parseColor("#007AFF") else Color.TRANSPARENT)
+                        cornerRadius = dp(12).toFloat()
+                    }
+                    setOnClickListener {
+                        selectedSubIndex = i
+                        buildContent()
+                    }
+                }
+                val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                lp.setMargins(0, 0, dp(8), 0)
+                subTabsLayout.addView(chip, lp)
+            }
+
             contentContainer.removeAllViews()
             val scroll = ScrollView(ctx)
-            val contentList = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-            scroll.addView(contentList)
+            val list = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+            scroll.addView(list)
             contentContainer.addView(scroll)
 
-            val cat = Features.menuData[selectedCategoryIndex]
-            for (element in cat.elements) {
-                val row = LinearLayout(ctx).apply {
+            val sub = cat.subs[selectedSubIndex]
+            for (el in sub.elements) {
+                val card = LinearLayout(ctx).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(dp(12), dp(12), dp(12), dp(12))
-                    background = GradientDrawable().apply { setColor(Color.parseColor("#1A1A1A")); cornerRadius = dp(10).toFloat() }
+                    background = GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dp(10).toFloat() }
                     val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
                     lp.setMargins(0, 0, 0, dp(8))
                     layoutParams = lp
                 }
 
-                if (element is Features.MenuElement.SwitchItem) {
-                    val topRow = LinearLayout(ctx).apply {
-                        orientation = LinearLayout.HORIZONTAL
-                        gravity = Gravity.CENTER_VERTICAL
-                    }
-                    topRow.addView(TextView(ctx).apply {
-                        text = element.name
-                        setTextColor(Color.WHITE)
-                        textSize = 14f
+                if (el is Features.MenuElement.SwitchItem) {
+                    val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+                    row.addView(TextView(ctx).apply {
+                        text = el.name; setTextColor(Color.parseColor("#333333")); textSize = 13f
                     }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                     
-                    topRow.addView(Switch(ctx).apply {
-                        isChecked = element.isChecked
-                        setOnCheckedChangeListener { _, v -> element.isChecked = v; element.action(v) }
+                    row.addView(Switch(ctx).apply {
+                        isChecked = el.isChecked
+                        setOnCheckedChangeListener { _, v -> el.isChecked = v; el.action(v) }
                     })
-                    row.addView(topRow)
-                } 
-                else if (element is Features.MenuElement.SliderItem) {
-                    val topRow = LinearLayout(ctx).apply {
-                        orientation = LinearLayout.HORIZONTAL
-                        gravity = Gravity.CENTER_VERTICAL
-                        setPadding(0, 0, 0, dp(8))
-                    }
-                    topRow.addView(TextView(ctx).apply {
-                        text = element.name
-                        setTextColor(Color.WHITE)
-                        textSize = 14f
+                    card.addView(row)
+                } else if (el is Features.MenuElement.SliderItem) {
+                    val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0,0,0,dp(4)) }
+                    row.addView(TextView(ctx).apply {
+                        text = el.name; setTextColor(Color.parseColor("#333333")); textSize = 13f
                     }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                     
                     val valText = TextView(ctx).apply {
-                        text = element.value.toInt().toString()
-                        setTextColor(Color.parseColor("#4A90E2"))
-                        textSize = 14f
-                        setTypeface(null, Typeface.BOLD)
+                        text = String.format("%.1f", el.value); setTextColor(Color.parseColor("#007AFF")); textSize = 13f; setTypeface(null, Typeface.BOLD)
                     }
-                    topRow.addView(valText)
-                    row.addView(topRow)
+                    row.addView(valText)
+                    card.addView(row)
 
-                    row.addView(SeekBar(ctx).apply {
+                    card.addView(SeekBar(ctx).apply {
                         max = 100
-                        progress = (((element.value - element.min) / (element.max - element.min)) * 100).toInt()
+                        progress = (((el.value - el.min) / (el.max - el.min)) * 100).toInt()
                         setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                                val valF = element.min + (element.max - element.min) * (progress / 100f)
-                                element.value = valF
-                                valText.text = String.format("%.1f", valF)
-                                element.action(valF)
+                            override fun onProgressChanged(sb: SeekBar?, p: Int, f: Boolean) {
+                                val v = el.min + (el.max - el.min) * (p / 100f)
+                                el.value = v
+                                valText.text = String.format("%.1f", v)
+                                el.action(v)
                             }
                             override fun onStartTrackingTouch(sb: SeekBar?) {}
                             override fun onStopTrackingTouch(sb: SeekBar?) {}
                         })
                     })
                 }
-                contentList.addView(row)
+                list.addView(card)
             }
         }
 
-        for ((index, cat) in Features.menuData.withIndex()) {
+        for ((i, cat) in Features.menuData.withIndex()) {
             val tab = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -240,25 +256,26 @@ class OverlayService : Service() {
                 val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
                 lp.setMargins(0, 0, 0, dp(4))
                 layoutParams = lp
-                if (index == selectedCategoryIndex) {
-                    background = GradientDrawable().apply { setColor(Color.parseColor("#1A1A1A")); cornerRadius = dp(8).toFloat() }
+                if (i == selectedCatIndex) {
+                    background = GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dp(8).toFloat() }
                 }
             }
             tab.addView(TextView(ctx).apply { text = cat.icon; textSize = 16f; setPadding(0, 0, dp(8), 0) })
             tab.addView(TextView(ctx).apply { 
                 text = cat.name; 
-                setTextColor(if (index == selectedCategoryIndex) Color.parseColor("#4A90E2") else Color.GRAY)
+                setTextColor(if (i == selectedCatIndex) Color.parseColor("#007AFF") else Color.GRAY)
                 textSize = 13f 
             })
             tab.setOnClickListener {
-                selectedCategoryIndex = index
-                for (i in 0 until sidebar.childCount) {
-                    val v = sidebar.getChildAt(i) as LinearLayout
+                selectedCatIndex = i
+                selectedSubIndex = 0
+                for (j in 0 until sidebar.childCount) {
+                    val v = sidebar.getChildAt(j) as LinearLayout
                     v.setBackgroundColor(Color.TRANSPARENT)
                     (v.getChildAt(1) as TextView).setTextColor(Color.GRAY)
                 }
-                tab.background = GradientDrawable().apply { setColor(Color.parseColor("#1A1A1A")); cornerRadius = dp(8).toFloat() }
-                (tab.getChildAt(1) as TextView).setTextColor(Color.parseColor("#4A90E2"))
+                tab.background = GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dp(8).toFloat() }
+                (tab.getChildAt(1) as TextView).setTextColor(Color.parseColor("#007AFF"))
                 buildContent()
             }
             sidebar.addView(tab)
@@ -267,30 +284,31 @@ class OverlayService : Service() {
         mainLayout.addView(body)
         buildContent()
 
-        // Draggable Header
-        header.setOnTouchListener { _, ev ->
-            when (ev.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    downX = ev.rawX; downY = ev.rawY
-                    initX = panelParams.x; initY = panelParams.y; true
+        header.setOnTouchListener(object : View.OnTouchListener {
+            var downX = 0f; var downY = 0f; var initX = 0; var initY = 0
+            override fun onTouch(v: View?, ev: MotionEvent): Boolean {
+                when (ev.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downX = ev.rawX; downY = ev.rawY; initX = panelParams.x; initY = panelParams.y; return true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        panelParams.x = initX + (ev.rawX - downX).toInt()
+                        panelParams.y = initY + (ev.rawY - downY).toInt()
+                        wm.updateViewLayout(mainLayout, panelParams); return true
+                    }
                 }
-                MotionEvent.ACTION_MOVE -> {
-                    panelParams.x = initX + (ev.rawX - downX).toInt()
-                    panelParams.y = initY + (ev.rawY - downY).toInt()
-                    wm.updateViewLayout(mainLayout, panelParams); true
-                }
-                else -> false
+                return false
             }
-        }
+        })
 
         panelParams = WindowManager.LayoutParams(
-            dp(320), WindowManager.LayoutParams.WRAP_CONTENT,
+            dp(360), dp(450),
             if (Build.VERSION.SDK_INT >= 26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT).apply { 
-                gravity = Gravity.TOP or Gravity.START
-                x = dp(40); y = dp(150) 
+                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                y = dp(120) 
             }
         
         panelView = mainLayout
@@ -304,7 +322,7 @@ class OverlayService : Service() {
     
     private fun removeViews() {
         removePanel()
-        buttonView?.let { try { wm.removeView(it) } catch (_: Throwable) {} }
-        buttonView = null
+        islandView?.let { try { wm.removeView(it) } catch (_: Throwable) {} }
+        islandView = null
     }
 }

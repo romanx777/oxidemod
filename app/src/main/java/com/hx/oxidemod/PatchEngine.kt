@@ -3,11 +3,14 @@ package com.hx.oxidemod
 import android.os.SystemClock
 
 object PatchEngine {
+    @Volatile var playersNearby: Int = 0
+
     object visuals {
         @Volatile var box = false
         @Volatile var line = false
         @Volatile var skeleton = false
         @Volatile var name = false
+        @Volatile var health = false
         @Volatile var distance = 150f
     }
     object player {
@@ -54,6 +57,8 @@ object PatchEngine {
             if (moduleBase == 0L) return
         }
         
+        if (pid > 0) playersNearby = 1 
+
         val chain = Config.kLocalPlayerChain
         if (chain.isEmpty() || chain[0] == 0L) return
         
@@ -65,13 +70,8 @@ object PatchEngine {
         }
         val player = addr
 
-        // ЛОГІКА ЗАПИСУ
         if (PatchEngine.player.health) MemAccess.writeInt(pid, player + Config.kHealthOff, Config.kHealthValue)
         if (PatchEngine.player.ammo)   MemAccess.writeInt(pid, player + Config.kAmmoOff,   Config.kAmmoValue)
-        
-        // Якщо слайдер швидкості не 1.0 - міняємо значення
-        if (PatchEngine.player.speed != 1.0f) {
-            MemAccess.writeFloat(pid, player + Config.kSpeedOff, PatchEngine.player.speed)
-        }
+        if (PatchEngine.player.speed != 1.0f) MemAccess.writeFloat(pid, player + Config.kSpeedOff, PatchEngine.player.speed)
     }
 }
