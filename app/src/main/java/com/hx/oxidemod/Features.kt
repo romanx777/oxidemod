@@ -1,41 +1,39 @@
 package com.hx.oxidemod
 
-// Тут ми описуємо всі вкладки та функції.
-// Щоб додати нову функцію - просто допиши рядок у потрібну вкладку.
 object Features {
-    
-    data class Item(
-        val name: String,
-        var isEnabled: Boolean = false,
-        val action: (Boolean) -> Unit = {} // Тут буде логіка
-    )
+
+    sealed class MenuElement {
+        abstract val name: String
+        data class SwitchItem(override val name: String, var isChecked: Boolean = false, val action: (Boolean) -> Unit = {}) : MenuElement()
+        data class SliderItem(override val name: String, var value: Float, val min: Float, val max: Float, val action: (Float) -> Unit = {}) : MenuElement()
+    }
 
     data class Category(
         val name: String,
-        val icon: String, // використовуємо емодзі замість іконок для простоти
-        val items: MutableList<Item>
+        val icon: String,
+        val elements: MutableList<MenuElement>
     )
 
     val menuData = mutableListOf(
         Category("Візуал", "👁️", mutableListOf(
-            Item("Бокс (ESP)", false) { enabled -> PatchEngine.visuals.box = enabled },
-            Item("Лінії", false) { enabled -> PatchEngine.visuals.line = enabled },
-            Item("Скелет", false) { enabled -> PatchEngine.visuals.skeleton = enabled },
-            Item("Імена", false) { enabled -> PatchEngine.visuals.name = enabled },
-            Item("Дистанція", false) { enabled -> PatchEngine.visuals.distance = enabled }
-        )),
-        Category("Світ", "🌍", mutableListOf(
-            Item("Час (День)", false) { enabled -> PatchEngine.world.day = enabled },
-            Item("Максимальний лут", false) { enabled -> PatchEngine.world.loot = enabled }
+            MenuElement.SwitchItem("Бокс (ESP)", false) { PatchEngine.visuals.box = it },
+            MenuElement.SwitchItem("Лінії", false) { PatchEngine.visuals.line = it },
+            MenuElement.SwitchItem("Скелет", false) { PatchEngine.visuals.skeleton = it },
+            MenuElement.SwitchItem("Імена", false) { PatchEngine.visuals.name = it },
+            MenuElement.SliderItem("Дальність (м)", 150f, 50f, 500f) { PatchEngine.visuals.distance = it }
         )),
         Category("Гравець", "🎯", mutableListOf(
-            Item("God Mode", false) { enabled -> PatchEngine.player.health = enabled },
-            Item("Нескінченні патрони", false) { enabled -> PatchEngine.player.ammo = enabled },
-            Item("Швидкість x3", false) { enabled -> PatchEngine.player.speed = enabled }
+            MenuElement.SwitchItem("God Mode", false) { PatchEngine.player.health = it },
+            MenuElement.SwitchItem("Нескінченні патрони", false) { PatchEngine.player.ammo = it },
+            MenuElement.SliderItem("Множник швидкості", 1.0f, 1.0f, 5.0f) { PatchEngine.player.speed = it }
+        )),
+        Category("Зброя", "🔫", mutableListOf(
+            MenuElement.SwitchItem("Без віддачі", false) { PatchEngine.weapon.noRecoil = it },
+            MenuElement.SwitchItem("Без розкиду", false) { PatchEngine.weapon.noSpread = it }
         )),
         Category("Налаштування", "⚙️", mutableListOf(
-            Item("Зберегти конфіг", false) { _ -> /* логіка збереження */ },
-            Item("Загрузити конфіг", false) { _ -> /* логіка загрузки */ }
+            MenuElement.SwitchItem("Зберегти конфіг", false) { /* логіка */ },
+            MenuElement.SwitchItem("Завантажити конфіг", false) { /* логіка */ }
         ))
     )
 }
