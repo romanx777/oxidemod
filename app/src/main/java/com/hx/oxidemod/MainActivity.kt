@@ -2,42 +2,59 @@ package com.hx.oxidemod
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Toast
+import android.view.Gravity
+import android.widget.LinearLayout
+import android.widget.TextView
 import java.io.File
 
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        val tv = TextView(this).apply {
+            text = "Перевірка дозволів..."
+            textSize = 18f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setPadding(32, 32, 32, 32)
+        }
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.BLACK)
+            addView(tv)
+            gravity = Gravity.CENTER
+        }
+        setContentView(layout)
+
         if (!Settings.canDrawOverlays(this)) {
-            try {
+            tv.text = "Потрібен дозвіл 'Поверх інших додатків'. Тапни сюди, щоб відкрити налаштування."
+            layout.setOnClickListener {
                 startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-                Toast.makeText(this, "Увімкни 'Поверх інших додатків' і повернись", Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Toast.makeText(this, "Дай дозвіл на Overlay в налаштуваннях вручну", Toast.LENGTH_LONG).show()
             }
             return
         }
 
-        Toast.makeText(this, "Запускаю... зачекай", Toast.LENGTH_SHORT).show()
-
-        // Запускаємо у фоні, щоб екран не зависав
+        tv.text = "Запит Root... (якщо висить довго - перевір Magisk)"
+        
         Thread {
-            if (!deployHelper()) {
-                runOnUiThread { Toast.makeText(this, "Помилка копіювання (потрібен root)", Toast.LENGTH_LONG).show() }
-                return@Thread
-            }
-            if (!RootHelper.instance.start("/data/local/tmp/hx_helper")) {
-                runOnUiThread { Toast.makeText(this, "Відмовлено в root", Toast.LENGTH_LONG).show() }
-                return@Thread
-            }
+            val deploy = deployHelper()
+            val start = RootHelper.instance.start("/data/local/tmp/hx_helper")
+            
             runOnUiThread {
-                startForegroundService(Intent(this, OverlayService::class.java))
-                Toast.makeText(this, "Працює! Шукай кнопку ≡", Toast.LENGTH_SHORT).show()
-                finish()
+                if (!deploy) {
+                    tv.text = "Помилка: не вдалося скопіювати helper.\nПеревір, чи дав ти дозвіл Root.\nТапни, щоб спробувати ще."
+                    layout.setOnClickListener { recreate() }
+                } else if (!start) {
+                    tv.text = "Помилка: не вдалося запустити helper.\nПеревір Root.\nТапни, щоб спробувати ще."
+                    layout.setOnClickListener { recreate() }
+                } else {
+                    tv.text = "Успіх! Оверлей запущено.\nШукай кнопку ≡ на екрані."
+                    startForegroundService(Intent(this@MainActivity, OverlayService::class.java))
+                }
             }
         }.start()
     }
@@ -49,7 +66,11 @@ class MainActivity : Activity() {
             "cp ${tmp.absolutePath} /data/local/tmp/hx_helper && " +
             "chmod 755 /data/local/tmp/hx_helper && echo OK")
             .redirectErrorStream(true).start()
-        val out = p.inputStream.bufferedReader().readText(); p.waitFor()
+        val out = p.inputStream.bufferedReader().readText()
+        p.waitFor()
         out.contains("OK")
-    } catch (_: Throwable) { false }
+    } catch (e: Throwable) { 
+        e.printStackTrace()
+        false 
+    }
 }
