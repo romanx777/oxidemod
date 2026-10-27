@@ -4,6 +4,7 @@ import android.app.*
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
@@ -17,8 +18,8 @@ class OverlayService : Service() {
     private var panelView: View? = null
     private lateinit var btnParams: WindowManager.LayoutParams
     private lateinit var panelParams: WindowManager.LayoutParams
-    private val engine = PatchEngine()
-    private var infoText: TextView? = null
+    
+    private var selectedCategoryIndex = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -26,12 +27,12 @@ class OverlayService : Service() {
         super.onCreate()
         startForeground(1, buildNotification())
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        engine.start()
+        PatchEngine.start()
         showButton()
     }
 
     override fun onDestroy() {
-        engine.stop()
+        PatchEngine.stop()
         removeViews()
         super.onDestroy()
     }
@@ -56,9 +57,9 @@ class OverlayService : Service() {
             textSize = 22f
             gravity = Gravity.CENTER
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1E1E2E"))
+                setColor(Color.parseColor("#1A1A1A"))
                 cornerRadius = dp(50).toFloat()
-                setStroke(dp(2), Color.parseColor("#00E5FF"))
+                setStroke(dp(2), Color.parseColor("#007AFF"))
             }
         }
         btnParams = WindowManager.LayoutParams(
@@ -97,97 +98,136 @@ class OverlayService : Service() {
 
     private fun showPanel() {
         val ctx = this
-        val rootLayout = LinearLayout(ctx).apply {
+        val mainLayout = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1E1E2E"))
-                cornerRadius = dp(16).toFloat()
-                setStroke(dp(1), Color.parseColor("#333333"))
+                setColor(Color.parseColor("#141414"))
+                cornerRadius = dp(12).toFloat()
             }
-            setPadding(dp(16), dp(16), dp(16), dp(16))
         }
 
-        // Header (Drag Handle)
+        // --- Header (Avis style) ---
         val header = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, dp(12))
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#0A0A0A"))
+                cornerRadii = floatArrayOf(dp(12).toFloat(), dp(12).toFloat(), dp(12).toFloat(), dp(12).toFloat(), 0f, 0f, 0f, 0f)
+            }
         }
-        header.addView(TextView(ctx).apply {
-            text = "OXIDE MOD"
-            setTextColor(Color.parseColor("#00E5FF"))
-            textSize = 18f
-            setTypeface(null, android.graphics.Typeface.BOLD)
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         
+        val profileImg = TextView(ctx).apply {
+            text = "👤"
+            textSize = 18f
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            background = GradientDrawable().apply { setColor(Color.parseColor("#333333")); cornerRadius = dp(20).toFloat() }
+        }
+        header.addView(profileImg)
+        
+        header.addView(TextView(ctx).apply {
+            text = "  OXIDE TOOLS"
+            setTextColor(Color.WHITE)
+            textSize = 16f
+            setTypeface(null, Typeface.BOLD)
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
         header.addView(TextView(ctx).apply {
             text = "✕"
             setTextColor(Color.LTGRAY)
             textSize = 18f
-            setPadding(dp(16), 0, dp(8), 0)
+            setPadding(dp(16), 0, 0, 0)
             setOnClickListener { removePanel() }
         })
-        rootLayout.addView(header)
+        mainLayout.addView(header)
 
-        // Status
-        infoText = TextView(ctx).apply {
-            setTextColor(Color.parseColor("#AAAAAA"))
-            textSize = 10f
-            setPadding(0, 0, 0, dp(16))
+        // --- Body (Sidebar + Content) ---
+        val body = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(8), dp(8), dp(8), dp(8))
         }
-        rootLayout.addView(infoText)
 
-        fun addFeature(title: String, init: Boolean, onChange: (Boolean) -> Unit) {
-            val row = LinearLayout(ctx).apply {
+        val sidebar = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+        }
+        val sidebarParams = LinearLayout.LayoutParams(dp(100), LinearLayout.LayoutParams.MATCH_PARENT)
+        body.addView(sidebar, sidebarParams)
+
+        val contentContainer = FrameLayout(ctx).apply {
+            setPadding(dp(8), dp(4), dp(4), dp(4))
+        }
+        body.addView(contentContainer, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
+
+        fun buildContent() {
+            contentContainer.removeAllViews()
+            val scroll = ScrollView(ctx)
+            val contentList = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+            scroll.addView(contentList)
+            contentContainer.addView(scroll)
+
+            val cat = Features.menuData[selectedCategoryIndex]
+            for (item in cat.items) {
+                val row = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(8), dp(12), dp(8), dp(12))
+                    background = GradientDrawable().apply { setColor(Color.parseColor("#1A1A1A")); cornerRadius = dp(8).toFloat() }
+                    val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                    lp.setMargins(0, dp(4), 0, dp(4))
+                    layoutParams = lp
+                }
+                row.addView(TextView(ctx).apply {
+                    text = item.name
+                    setTextColor(Color.WHITE)
+                    textSize = 13f
+                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
+                val sw = Switch(ctx).apply {
+                    isChecked = item.isEnabled
+                    setOnCheckedChangeListener { _, v ->
+                        item.isEnabled = v
+                        item.action(v)
+                    }
+                }
+                row.addView(sw)
+                contentList.addView(row)
+            }
+        }
+
+        for ((index, cat) in Features.menuData.withIndex()) {
+            val tab = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(8), 0, dp(8))
-            }
-            row.addView(TextView(ctx).apply {
-                text = title
-                setTextColor(Color.WHITE)
-                textSize = 14f
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            
-            val sw = Switch(ctx).apply {
-                isChecked = init
-                setOnCheckedChangeListener { _, v -> onChange(v) }
-            }
-            row.addView(sw)
-            rootLayout.addView(row)
-        }
-
-        addFeature("God Mode / Health", engine.enabledHealth) { engine.enabledHealth = it }
-        addFeature("Infinite Ammo", engine.enabledAmmo) { engine.enabledAmmo = it }
-        addFeature("Speed Hack", engine.enabledSpeed) { engine.enabledSpeed = it }
-
-        // Kill Button
-        val killBtn = TextView(ctx).apply {
-            text = "KILL GAME PROCESS"
-            setTextColor(Color.WHITE)
-            textSize = 12f
-            gravity = Gravity.CENTER
-            setPadding(0, dp(12), 0, dp(12))
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#FF3B30"))
-                cornerRadius = dp(8).toFloat()
-            }
-            setOnClickListener {
-                val pid = engine.pidNow()
-                if (pid > 0) {
-                    try { Runtime.getRuntime().exec("su -c kill -9 $pid") } catch (_: Exception) {}
-                    Toast.makeText(ctx, "Process Killed", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(ctx, "Process not found", Toast.LENGTH_SHORT).show()
+                setPadding(dp(8), dp(12), dp(8), dp(12))
+                if (index == selectedCategoryIndex) {
+                    background = GradientDrawable().apply { setColor(Color.parseColor("#1A1A1A")); cornerRadius = dp(8).toFloat() }
                 }
             }
+            tab.addView(TextView(ctx).apply { text = cat.icon; textSize = 16f; setPadding(0, 0, dp(8), 0) })
+            tab.addView(TextView(ctx).apply { 
+                text = cat.name; 
+                setTextColor(if (index == selectedCategoryIndex) Color.parseColor("#007AFF") else Color.GRAY)
+                textSize = 12f 
+            })
+            tab.setOnClickListener {
+                selectedCategoryIndex = index
+                for (i in 0 until sidebar.childCount) {
+                    val v = sidebar.getChildAt(i) as LinearLayout
+                    v.setBackgroundColor(Color.TRANSPARENT)
+                    (v.getChildAt(1) as TextView).setTextColor(Color.GRAY)
+                }
+                tab.background = GradientDrawable().apply { setColor(Color.parseColor("#1A1A1A")); cornerRadius = dp(8).toFloat() }
+                (tab.getChildAt(1) as TextView).setTextColor(Color.parseColor("#007AFF"))
+                buildContent()
+            }
+            sidebar.addView(tab)
         }
-        val killParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = dp(16)
-        }
-        rootLayout.addView(killBtn, killParams)
 
-        // Make header draggable
+        mainLayout.addView(body)
+        buildContent()
+
+        // Draggable Header
         header.setOnTouchListener { _, ev ->
             when (ev.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -197,44 +237,29 @@ class OverlayService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     panelParams.x = initX + (ev.rawX - downX).toInt()
                     panelParams.y = initY + (ev.rawY - downY).toInt()
-                    wm.updateViewLayout(rootLayout, panelParams); true
+                    wm.updateViewLayout(mainLayout, panelParams); true
                 }
                 else -> false
             }
         }
 
         panelParams = WindowManager.LayoutParams(
-            dp(260), WindowManager.LayoutParams.WRAP_CONTENT,
+            dp(320), dp(400),
             if (Build.VERSION.SDK_INT >= 26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT).apply { 
                 gravity = Gravity.TOP or Gravity.START
-                x = dp(80); y = dp(200) 
+                x = dp(40); y = dp(150) 
             }
         
-        panelView = rootLayout
-        wm.addView(rootLayout, panelParams)
-        
-        // Info updater
-        val handler = android.os.Handler(mainLooper)
-        handler.post(object : Runnable {
-            override fun run() {
-                if (panelView == null) return
-                val pid = engine.pidNow(); val base = engine.baseNow()
-                infoText?.text = when {
-                    pid > 0 && base != 0L -> "STATUS: ATTACHED\nPID: $pid\nBASE: 0x${java.lang.Long.toHexString(base)}"
-                    pid > 0                 -> "STATUS: WAITING FOR MODULE\nPID: $pid"
-                    else                    -> "STATUS: GAME NOT RUNNING\nLook for ${Config.PACKAGE}"
-                }
-                handler.postDelayed(this, 500)
-            }
-        })
+        panelView = mainLayout
+        wm.addView(mainLayout, panelParams)
     }
 
     private fun removePanel() {
         panelView?.let { try { wm.removeView(it) } catch (_: Throwable) {} }
-        panelView = null; infoText = null
+        panelView = null
     }
     
     private fun removeViews() {
