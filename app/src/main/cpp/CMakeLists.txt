@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.18)
+project(hx_helper CXX)
+add_executable(hx_helper helper.cpp)
+set_target_properties(hx_helper PROPERTIES PREFIX "" OUTPUT_NAME "hx_helper")
+target_compile_options(hx_helper PRIVATE -Os -fPIE)
+target_link_options(hx_helper PRIVATE -pie -s)
