@@ -7,10 +7,8 @@ object PatchEngine {
 
     object visuals {
         @Volatile var box = false
-        @Volatile var line = false
         @Volatile var skeleton = false
         @Volatile var name = false
-        @Volatile var health = false
         @Volatile var distance = 150f
     }
     object player {
@@ -18,9 +16,14 @@ object PatchEngine {
         @Volatile var ammo = false
         @Volatile var speed = 1.0f
     }
-    object weapon {
-        @Volatile var noRecoil = false
-        @Volatile var noSpread = false
+    object aimbot {
+        @Volatile var enabled = false
+        @Volatile var silent = false
+        @Volatile var drawFov = false
+        @Volatile var fov = 150f
+        @Volatile var smooth = 2.0f
+        @Volatile var targetHead = false
+        @Volatile var targetBody = false
     }
 
     @Volatile private var pid: Int = 0

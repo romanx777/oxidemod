@@ -46,7 +46,7 @@ class OverlayService : Service() {
                 .createNotificationChannel(NotificationChannel("hx", "mod", NotificationManager.IMPORTANCE_LOW))
         }
         return Notification.Builder(this, "hx")
-            .setContentTitle("oxide mod").setContentText("running")
+            .setContentTitle("OXIDE TOOLS").setContentText("running")
             .setSmallIcon(android.R.drawable.ic_menu_manage).build()
     }
 
@@ -59,18 +59,13 @@ class OverlayService : Service() {
         val island = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setPadding(dp(20), dp(10), dp(20), dp(10))
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#000000"))
                 cornerRadius = dp(30).toFloat()
+                setStroke(dp(1), Color.parseColor("#333333"))
             }
         }
-
-        island.addView(TextView(ctx).apply {
-            text = "👁️"
-            textSize = 14f
-            setPadding(0, 0, dp(8), 0)
-        })
 
         islandText = TextView(ctx).apply {
             text = "0 ГРАВЦІВ"
@@ -110,31 +105,29 @@ class OverlayService : Service() {
         val mainLayout = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#F5F5F7"))
-                cornerRadius = dp(20).toFloat()
+                setColor(Color.parseColor("#0F0F0F")) // Темний фон
+                cornerRadius = dp(16).toFloat()
+                setStroke(dp(1), Color.parseColor("#2C2C2C"))
             }
         }
 
         val header = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(16), dp(20), dp(16))
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#000000"))
-                cornerRadii = floatArrayOf(dp(20).toFloat(), dp(20).toFloat(), dp(20).toFloat(), dp(20).toFloat(), 0f, 0f, 0f, 0f)
-            }
+            setPadding(dp(16), dp(16), dp(16), dp(16))
         }
         header.addView(TextView(ctx).apply {
-            text = "Avis tools style"
-            setTextColor(Color.WHITE)
+            text = "OXIDE TOOLS"
+            setTextColor(Color.parseColor("#007AFF"))
             textSize = 16f
             setTypeface(null, Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
         header.addView(TextView(ctx).apply {
-            text = "✕"
-            setTextColor(Color.LTGRAY)
+            text = "X"
+            setTextColor(Color.GRAY)
             textSize = 18f
+            setTypeface(null, Typeface.BOLD)
             setPadding(dp(16), 0, 0, 0)
             setOnClickListener { removePanel() }
         })
@@ -142,19 +135,17 @@ class OverlayService : Service() {
 
         val body = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setPadding(dp(12), 0, dp(12), dp(12))
         }
 
         val sidebar = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { setColor(Color.parseColor("#EAEAEA")); cornerRadius = dp(12).toFloat() }
-            setPadding(dp(4), dp(8), dp(4), dp(8))
         }
-        body.addView(sidebar, LinearLayout.LayoutParams(dp(110), LinearLayout.LayoutParams.MATCH_PARENT))
+        body.addView(sidebar, LinearLayout.LayoutParams(dp(80), LinearLayout.LayoutParams.MATCH_PARENT))
 
         val contentWrapper = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), 0, 0, 0)
+            setPadding(dp(8), 0, 0, 0)
         }
         body.addView(contentWrapper, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
 
@@ -171,13 +162,14 @@ class OverlayService : Service() {
             val cat = Features.menuData[selectedCatIndex]
             for ((i, sub) in cat.subs.withIndex()) {
                 val chip = TextView(ctx).apply {
-                    text = sub.name
+                    text = sub.name.uppercase()
                     setPadding(dp(12), dp(6), dp(12), dp(6))
-                    textSize = 12f
+                    textSize = 11f
+                    setTypeface(null, Typeface.BOLD)
                     setTextColor(if (i == selectedSubIndex) Color.WHITE else Color.GRAY)
                     background = GradientDrawable().apply {
-                        setColor(if (i == selectedSubIndex) Color.parseColor("#007AFF") else Color.TRANSPARENT)
-                        cornerRadius = dp(12).toFloat()
+                        setColor(if (i == selectedSubIndex) Color.parseColor("#1A1A1A") else Color.TRANSPARENT)
+                        cornerRadius = dp(8).toFloat()
                     }
                     setOnClickListener {
                         selectedSubIndex = i
@@ -200,7 +192,7 @@ class OverlayService : Service() {
                 val card = LinearLayout(ctx).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(dp(12), dp(12), dp(12), dp(12))
-                    background = GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dp(10).toFloat() }
+                    background = GradientDrawable().apply { setColor(Color.parseColor("#1A1A1A")); cornerRadius = dp(8).toFloat() }
                     val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
                     lp.setMargins(0, 0, 0, dp(8))
                     layoutParams = lp
@@ -209,7 +201,7 @@ class OverlayService : Service() {
                 if (el is Features.MenuElement.SwitchItem) {
                     val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
                     row.addView(TextView(ctx).apply {
-                        text = el.name; setTextColor(Color.parseColor("#333333")); textSize = 13f
+                        text = el.name; setTextColor(Color.LTGRAY); textSize = 13f
                     }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                     
                     row.addView(Switch(ctx).apply {
@@ -220,7 +212,7 @@ class OverlayService : Service() {
                 } else if (el is Features.MenuElement.SliderItem) {
                     val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0,0,0,dp(4)) }
                     row.addView(TextView(ctx).apply {
-                        text = el.name; setTextColor(Color.parseColor("#333333")); textSize = 13f
+                        text = el.name; setTextColor(Color.LTGRAY); textSize = 13f
                     }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                     
                     val valText = TextView(ctx).apply {
@@ -250,32 +242,41 @@ class OverlayService : Service() {
 
         for ((i, cat) in Features.menuData.withIndex()) {
             val tab = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
                 setPadding(dp(8), dp(12), dp(8), dp(12))
                 val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
                 lp.setMargins(0, 0, 0, dp(4))
                 layoutParams = lp
                 if (i == selectedCatIndex) {
-                    background = GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dp(8).toFloat() }
+                    background = GradientDrawable().apply { setColor(Color.parseColor("#1A1A1A")); cornerRadius = dp(8).toFloat() }
                 }
             }
-            tab.addView(TextView(ctx).apply { text = cat.icon; textSize = 16f; setPadding(0, 0, dp(8), 0) })
             tab.addView(TextView(ctx).apply { 
-                text = cat.name; 
+                text = cat.tag
                 setTextColor(if (i == selectedCatIndex) Color.parseColor("#007AFF") else Color.GRAY)
-                textSize = 13f 
+                textSize = 14f 
+                setTypeface(null, Typeface.BOLD)
             })
+            tab.addView(TextView(ctx).apply { 
+                text = cat.name
+                setTextColor(if (i == selectedCatIndex) Color.WHITE else Color.GRAY)
+                textSize = 10f 
+                setPadding(0, dp(4), 0, 0)
+            })
+            
             tab.setOnClickListener {
                 selectedCatIndex = i
                 selectedSubIndex = 0
                 for (j in 0 until sidebar.childCount) {
                     val v = sidebar.getChildAt(j) as LinearLayout
                     v.setBackgroundColor(Color.TRANSPARENT)
+                    (v.getChildAt(0) as TextView).setTextColor(Color.GRAY)
                     (v.getChildAt(1) as TextView).setTextColor(Color.GRAY)
                 }
-                tab.background = GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dp(8).toFloat() }
-                (tab.getChildAt(1) as TextView).setTextColor(Color.parseColor("#007AFF"))
+                tab.background = GradientDrawable().apply { setColor(Color.parseColor("#1A1A1A")); cornerRadius = dp(8).toFloat() }
+                (tab.getChildAt(0) as TextView).setTextColor(Color.parseColor("#007AFF"))
+                (tab.getChildAt(1) as TextView).setTextColor(Color.WHITE)
                 buildContent()
             }
             sidebar.addView(tab)
@@ -302,7 +303,7 @@ class OverlayService : Service() {
         })
 
         panelParams = WindowManager.LayoutParams(
-            dp(360), dp(450),
+            dp(340), dp(450),
             if (Build.VERSION.SDK_INT >= 26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,

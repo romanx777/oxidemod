@@ -9,53 +9,42 @@ object Features {
     }
 
     data class SubCategory(val name: String, val elements: MutableList<MenuElement>)
-    data class Category(val name: String, val icon: String, val subs: List<SubCategory>)
+    data class Category(val name: String, val tag: String, val subs: List<SubCategory>)
 
     val menuData = mutableListOf(
-        Category("Візуал", "👁️", listOf(
+        Category("ВІЗУАЛ", "VIS", listOf(
             SubCategory("Гравці", mutableListOf(
                 MenuElement.SwitchItem("Бокс (ESP)", false) { PatchEngine.visuals.box = it },
                 MenuElement.SwitchItem("Скелет", false) { PatchEngine.visuals.skeleton = it },
                 MenuElement.SwitchItem("Імена", false) { PatchEngine.visuals.name = it },
-                MenuElement.SwitchItem("Здоров'я", false) { PatchEngine.visuals.health = it },
                 MenuElement.SliderItem("Дальність", 150f, 50f, 500f) { PatchEngine.visuals.distance = it }
-            )),
-            SubCategory("Стиль", mutableListOf(
-                MenuElement.SwitchItem("Лінії", false) { PatchEngine.visuals.line = it },
-                MenuElement.SliderItem("Товщина ліній", 1f, 0.5f, 3f) { _ -> }
             ))
         )),
-        Category("Світ", "🌍", listOf(
-            SubCategory("Руда", mutableListOf(
+        Category("СВІТ", "WLD", listOf(
+            SubCategory("Лут", mutableListOf(
                 MenuElement.SwitchItem("Камінь", false) { },
                 MenuElement.SwitchItem("Метал", false) { },
                 MenuElement.SwitchItem("Сірка", false) { }
-            )),
-            SubCategory("Бази", mutableListOf(
-                MenuElement.SwitchItem("Шафи", false) { },
-                MenuElement.SwitchItem("Двері", false) { },
-                MenuElement.SwitchItem("Турелі", false) { }
-            )),
-            SubCategory("Транспорт", mutableListOf(
-                MenuElement.SwitchItem("Машини", false) { },
-                MenuElement.SwitchItem("Вертольоти", false) { }
             ))
         )),
-        Category("Гравець", "🎯", listOf(
+        Category("ГРАВЕЦЬ", "PLR", listOf(
             SubCategory("Основне", mutableListOf(
                 MenuElement.SwitchItem("God Mode", false) { PatchEngine.player.health = it },
                 MenuElement.SwitchItem("Нескінченні патрони", false) { PatchEngine.player.ammo = it },
                 MenuElement.SliderItem("Швидкість", 1.0f, 1.0f, 5.0f) { PatchEngine.player.speed = it }
-            )),
-            SubCategory("Зброя", mutableListOf(
-                MenuElement.SwitchItem("Без віддачі", false) { PatchEngine.weapon.noRecoil = it },
-                MenuElement.SwitchItem("Без розкиду", false) { PatchEngine.weapon.noSpread = it }
             ))
         )),
-        Category("Налаштування", "⚙️", listOf(
-            SubCategory("Конфіги", mutableListOf(
-                MenuElement.SwitchItem("Зберегти", false) { },
-                MenuElement.SwitchItem("Завантажити", false) { }
+        Category("АІМБОТ", "AIM", listOf(
+            SubCategory("Налаштування", mutableListOf(
+                MenuElement.SwitchItem("Аімбот", false) { PatchEngine.aimbot.enabled = it },
+                MenuElement.SwitchItem("Silent Aim", false) { PatchEngine.aimbot.silent = it },
+                MenuElement.SwitchItem("Малювати FOV", false) { PatchEngine.aimbot.drawFov = it },
+                MenuElement.SliderItem("Радіус FOV", 150f, 50f, 500f) { PatchEngine.aimbot.fov = it },
+                MenuElement.SliderItem("Плавність", 2.0f, 1.0f, 10.0f) { PatchEngine.aimbot.smooth = it }
+            )),
+            SubCategory("Ціль", mutableListOf(
+                MenuElement.SwitchItem("Голова", false) { PatchEngine.aimbot.targetHead = it },
+                MenuElement.SwitchItem("Тіло", false) { PatchEngine.aimbot.targetBody = it }
             ))
         ))
     )
