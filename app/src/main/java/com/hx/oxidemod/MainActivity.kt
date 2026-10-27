@@ -14,14 +14,12 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import com.topjohnwu.superuser.Shell
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        Shell.setDefaultBuilder(Shell.Builder.create().setFlags(Shell.FLAG_REDIRECT_STDERR).setTimeout(15))
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -65,15 +63,29 @@ class MainActivity : Activity() {
 
             Thread {
                 try {
-                    // Прімусовий виклик рута
-                    val shell = Shell.getShell()
-                    if (shell.isRoot) {
+                    // Прямий виклик su з таймаутом 10 секунд
+                    val process = ProcessBuilder("su", "-c", "id").start()
+                    val finished = process.waitFor(10, TimeUnit.SECONDS)
+                    
+                    if (!finished) {
+                        process.destroy()
+                        runOnUiThread {
+                            btn.isEnabled = true
+                            btn.text = "СПРОБУВАТИ ЩЕ"
+                            tv.text = "ТАЙМ-АУТ.\nВідкрий Magisk вручну і дозволь root."
+                        }
+                        return@Thread
+                    }
+
+                    val out = process.inputStream.bufferedReader().readText()
+                    if (out.contains("uid=0")) {
                         val tmp = File(cacheDir, "hx_helper")
                         assets.open("helper").use { it.copyTo(tmp.outputStream()) }
                         tmp.setExecutable(true)
 
-                        Shell.cmd("cp ${tmp.absolutePath} /data/local/tmp/hx_helper").exec()
-                        Shell.cmd("chmod 755 /data/local/tmp/hx_helper").exec()
+                        // Копіюємо хелпер
+                        val cp = ProcessBuilder("su", "-c", "cp ${tmp.absolutePath} /data/local/tmp/hx_helper && chmod 755 /data/local/tmp/hx_helper").start()
+                        cp.waitFor(5, TimeUnit.SECONDS)
 
                         runOnUiThread {
                             tv.text = "УСПІХ!\nШукай острів зверху."
@@ -84,14 +96,14 @@ class MainActivity : Activity() {
                         runOnUiThread {
                             btn.isEnabled = true
                             btn.text = "СПРОБУВАТИ ЩЕ"
-                            tv.text = "ПОМИЛКА: ROOT НЕ НАДАНО"
+                            tv.text = "ПОМИЛКА: ROOT НЕ НАДАНО\n($out)"
                         }
                     }
                 } catch (e: Exception) {
                     runOnUiThread {
                         btn.isEnabled = true
                         btn.text = "СПРОБУВАТИ ЩЕ"
-                        tv.text = "ТАЙМ-АУТ: Magisk не відповів.\nПеревір налаштування Magisk."
+                        tv.text = "ПОМИЛКА: ${e.message}"
                     }
                 }
             }.start()
