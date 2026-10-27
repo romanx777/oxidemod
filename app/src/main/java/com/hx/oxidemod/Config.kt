@@ -4,7 +4,6 @@ object Config {
     const val PACKAGE = "com.catsbit.oxidesurvivalisland"
     const val MODULE  = "libil2cpp.so"
 
-    // Твої офсети з дампу
     const val kPlayerListBase = 0x8L    // activePlayerList
     const val kPositionOff = 0x1E8L     // lastTickPosition
 

@@ -87,7 +87,6 @@ class OverlayService : Service() {
         val handler = Handler(Looper.getMainLooper())
         handler.post(object : Runnable { 
             override fun run() { 
-                // ТУТ ТЕПЕР ПОКАЗУЄ КІЛЬКІСТЬ І ДИСТАНЦІЮ
                 islandText?.text = "${PatchEngine.playersNearby} ГР. | ${PatchEngine.closestPlayerDist}м"
                 handler.postDelayed(this, 1000) 
             } 
@@ -132,6 +131,7 @@ class OverlayService : Service() {
             contentContainer.removeAllViews()
             val scroll = ScrollView(ctx); val list = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }; scroll.addView(list); contentContainer.addView(scroll)
             val sub = cat.subs[selectedSubIndex]
+            
             for (el in sub.elements) {
                 val card = LinearLayout(ctx).apply {
                     orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(12), dp(12), dp(12))

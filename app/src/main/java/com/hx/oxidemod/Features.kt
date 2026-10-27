@@ -13,12 +13,17 @@ object Features {
     val menuData = mutableListOf(
         Category("ВІЗУАЛ", "VIS", listOf(
             SubCategory("Гравці", mutableListOf(
-                MenuElement.SwitchItem("Бокс (ESP)", false) { PatchEngine.visuals.box = it },
-                MenuElement.SliderItem("Дальність", 150f, 50f, 500f) { PatchEngine.visuals.distance = it }
+                MenuElement.SwitchItem("Бокс (ESP)", false) { PatchEngine.visuals.box = it }
             )),
             SubCategory("Приціл", mutableListOf(
                 MenuElement.SwitchItem("Малювати FOV", false) { PatchEngine.visuals.fovEnabled = it },
                 MenuElement.SliderItem("Радіус FOV", 200f, 50f, 800f) { PatchEngine.visuals.fovRadius = it }
+            ))
+        )),
+        Category("ГРАВЕЦЬ", "PLR", listOf(
+            SubCategory("Основне", mutableListOf(
+                MenuElement.SwitchItem("God Mode", false) { PatchEngine.player.health = it },
+                MenuElement.SwitchItem("Патрони", false) { PatchEngine.player.ammo = it }
             ))
         ))
     )

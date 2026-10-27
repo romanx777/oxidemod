@@ -8,11 +8,14 @@ object PatchEngine {
     @Volatile var playersNearby: Int = 0
     @Volatile var closestPlayerDist: Int = 0
 
-    // Повертаємо блок visuals, щоб меню знову працювало
     object visuals {
         @Volatile var box = false
         @Volatile var fovEnabled = false
         @Volatile var fovRadius = 200f
+    }
+    object player {
+        @Volatile var health = false
+        @Volatile var ammo = false
     }
 
     @Volatile private var pid: Int = 0
@@ -51,7 +54,6 @@ object PatchEngine {
         val itemsPtr = MemAccess.readLong(pid, listPtr + 0x10) ?: return
         if (itemsPtr == 0L) return
 
-        // Беремо позицію першого гравця (тебе)
         val player0Ptr = MemAccess.readLong(pid, itemsPtr) ?: return
         val pos0Bytes = RootHelper.instance.read(pid, player0Ptr + Config.kPositionOff, 12) ?: return
         val buf0 = ByteBuffer.wrap(pos0Bytes).order(ByteOrder.LITTLE_ENDIAN)
@@ -59,7 +61,6 @@ object PatchEngine {
 
         var minDist = 9999.0f
 
-        // Рахуємо дистанцію до всіх інших
         for (i in 1 until count) {
             val pPtr = MemAccess.readLong(pid, itemsPtr + (i * 8L)) ?: continue
             if (pPtr == 0L) continue
