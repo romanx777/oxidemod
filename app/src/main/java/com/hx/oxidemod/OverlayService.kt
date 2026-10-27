@@ -49,12 +49,10 @@ class OverlayService : Service() {
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     inner class EspView(context: Context) : View(context) {
-        private val boxPaint = Paint().apply { color = Color.RED; style = Paint.Style.STROKE; strokeWidth = dp(2).toFloat(); isAntiAlias = true }
         private val fovPaint = Paint().apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = dp(2).toFloat(); isAntiAlias = true }
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             if (PatchEngine.visuals.fovEnabled) canvas.drawCircle(width / 2f, height / 2f, PatchEngine.visuals.fovRadius, fovPaint)
-            if (PatchEngine.visuals.box) for (enemy in PatchEngine.enemiesToDraw) canvas.drawRect(enemy.screenX - 30, enemy.screenY - 60, enemy.screenX + 30, enemy.screenY + 60, boxPaint)
         }
     }
 
@@ -85,8 +83,15 @@ class OverlayService : Service() {
         island.setOnClickListener { togglePanel() }
         islandView = island
         wm.addView(island, islandParams)
+        
         val handler = Handler(Looper.getMainLooper())
-        handler.post(object : Runnable { override fun run() { islandText?.text = "${PatchEngine.playersNearby} ГРАВЦІВ"; handler.postDelayed(this, 1000) } })
+        handler.post(object : Runnable { 
+            override fun run() { 
+                // ТУТ ТЕПЕР ПОКАЗУЄ КІЛЬКІСТЬ І ДИСТАНЦІЮ
+                islandText?.text = "${PatchEngine.playersNearby} ГР. | ${PatchEngine.closestPlayerDist}м"
+                handler.postDelayed(this, 1000) 
+            } 
+        })
     }
 
     private fun togglePanel() { if (panelView != null) removePanel() else showPanel() }
