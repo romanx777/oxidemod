@@ -27,8 +27,6 @@ class RootHelper private constructor() {
         proc = null; stdin = null; stdout = null
     }
 
-    fun isRunning(): Boolean = proc?.isAlive == true
-
     fun sendCmd(cmd: String): String? = synchronized(lock) {
         val i = stdin ?: return null
         val o = stdout ?: return null
@@ -64,18 +62,12 @@ class RootHelper private constructor() {
         val instance = RootHelper()
         fun bytesToHex(b: ByteArray): String {
             val sb = StringBuilder(b.size * 2)
-            for (x in b) {
-                val v = x.toInt() and 0xff
-                sb.append("0123456789abcdef"[v ushr 4])
-                sb.append("0123456789abcdef"[v and 15])
-            }
+            for (x in b) { val v = x.toInt() and 0xff; sb.append("0123456789abcdef"[v ushr 4]); sb.append("0123456789abcdef"[v and 15]) }
             return sb.toString()
         }
         fun hexToBytes(s: String): ByteArray {
             require(s.length % 2 == 0)
-            return ByteArray(s.length / 2) {
-                ((Character.digit(s[it * 2], 16) shl 4) or Character.digit(s[it * 2 + 1], 16)).toByte()
-            }
+            return ByteArray(s.length / 2) { ((Character.digit(s[it * 2], 16) shl 4) or Character.digit(s[it * 2 + 1], 16)).toByte() }
         }
     }
 }
