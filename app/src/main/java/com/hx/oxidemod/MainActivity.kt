@@ -1,7 +1,9 @@
 package com.hx.oxidemod
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -11,6 +13,7 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,7 +26,7 @@ class MainActivity : Activity() {
             setPadding(48, 48, 48, 48)
         }
         val tv = TextView(this).apply {
-            text = "OXIDE TOOLS"
+            text = "CHEAT MENU"
             setTextColor(Color.parseColor("#007AFF"))
             textSize = 24f
             gravity = Gravity.CENTER
@@ -41,14 +44,16 @@ class MainActivity : Activity() {
         setContentView(layout)
 
         fun checkAndStart() {
+            // Перевірка оверлею
             if (!Settings.canDrawOverlays(this)) {
                 tv.text = "ПОТРІБЕН ДОЗВІЛ НА ОВЕРЛЕЙ"
-                android.widget.Toast.makeText(this, "Увімкни 'Поверх інших' і повернись", android.widget.Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Увімкни 'Поверх інших' і повернись", Toast.LENGTH_LONG).show()
                 startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
                 return
             }
-            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+            // Перевірка сповіщень (для Android 13+)
+            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
                 return
             }
             
@@ -56,20 +61,16 @@ class MainActivity : Activity() {
             btn.text = "ЗАПУСК..."
             tv.text = "ЗАПИТ ROOT..."
             
+            // Запит Root у фоні
             Thread {
                 try {
-                    val tmp = java.io.File(cacheDir, "hx_helper")
-                    assets.open("helper").use { it.copyTo(tmp.outputStream()) }
-                    tmp.setExecutable(true)
-                    
-                    // Швидка перевірка рута
                     val p = Runtime.getRuntime().exec("su -c id")
                     val out = p.inputStream.bufferedReader().readText()
                     p.waitFor()
                     
                     if (out.contains("uid=0")) {
                         runOnUiThread {
-                            tv.text = "УСПІХ!\nШукай динамічний острів зверху."
+                            tv.text = "УСПІХ!\nШукай острів зверху."
                             startForegroundService(Intent(this, OverlayService::class.java))
                             finish()
                         }
@@ -77,7 +78,7 @@ class MainActivity : Activity() {
                         runOnUiThread {
                             btn.isEnabled = true
                             btn.text = "СПРОБУВАТИ ЩЕ"
-                            tv.text = "ПОМИЛКА: НЕМАЄ ROOT"
+                            tv.text = "ПОМИЛКА: ROOT НЕ НАДАНО"
                         }
                     }
                 } catch (e: Exception) {
@@ -92,5 +93,12 @@ class MainActivity : Activity() {
 
         btn.setOnClickListener { checkAndStart() }
         checkAndStart()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1) {
+            recreate() // Перезапуск екрану після видачі дозволу
+        }
     }
 }
