@@ -16,61 +16,51 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         
         val tv = TextView(this).apply {
-            text = "Перевірка дозволів..."
+            text = "Ініціалізація..."
             textSize = 18f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            setPadding(32, 32, 32, 32)
+            setPadding(48, 48, 48, 48)
         }
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.BLACK)
+            setBackgroundColor(Color.parseColor("#111111"))
             addView(tv)
             gravity = Gravity.CENTER
         }
         setContentView(layout)
 
         if (!Settings.canDrawOverlays(this)) {
-            tv.text = "Потрібен дозвіл 'Поверх інших додатків'. Тапни сюди, щоб відкрити налаштування."
+            tv.text = "ПОТРІБЕН ДОЗВІЛ:\nНатисни сюди, щоб дозволити 'Поверх інших додатків'"
             layout.setOnClickListener {
                 startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
             }
             return
         }
 
-        tv.text = "Запит Root... (якщо висить довго - перевір Magisk)"
+        tv.text = "Розпакування та запуск..."
         
         Thread {
-            val deploy = deployHelper()
-            val start = RootHelper.instance.start("/data/local/tmp/hx_helper")
-            
-            runOnUiThread {
-                if (!deploy) {
-                    tv.text = "Помилка: не вдалося скопіювати helper.\nПеревір, чи дав ти дозвіл Root.\nТапни, щоб спробувати ще."
-                    layout.setOnClickListener { recreate() }
-                } else if (!start) {
-                    tv.text = "Помилка: не вдалося запустити helper.\nПеревір Root.\nТапни, щоб спробувати ще."
-                    layout.setOnClickListener { recreate() }
-                } else {
-                    tv.text = "Успіх! Оверлей запущено.\nШукай кнопку ≡ на екрані."
-                    startForegroundService(Intent(this@MainActivity, OverlayService::class.java))
+            try {
+                val tmp = File(cacheDir, "hx_helper")
+                assets.open("helper").use { it.copyTo(tmp.outputStream()) }
+                tmp.setExecutable(true) 
+                
+                runOnUiThread { tv.text = "Запит Root... (якщо Magisk запитає - дозволь)" }
+                
+                val started = RootHelper.instance.start(tmp.absolutePath)
+                
+                runOnUiThread {
+                    if (started) {
+                        tv.text = "УСПІХ!\nОверлей запущено.\nШукай кнопку ≡ на екрані.\nМожеш згорнути цей додаток."
+                        startForegroundService(Intent(this@MainActivity, OverlayService::class.java))
+                    } else {
+                        tv.text = "ПОМИЛКА ROOT.\nПеревір Magisk, чи дозволено для oxide mod."
+                    }
                 }
+            } catch (e: Exception) {
+                runOnUiThread { tv.text = "Помилка: ${e.message}" }
             }
         }.start()
-    }
-
-    private fun deployHelper(): Boolean = try {
-        val tmp = File(cacheDir, "hx_helper")
-        assets.open("helper").use { it.copyTo(tmp.outputStream()) }
-        val p = ProcessBuilder("su", "-c",
-            "cp ${tmp.absolutePath} /data/local/tmp/hx_helper && " +
-            "chmod 755 /data/local/tmp/hx_helper && echo OK")
-            .redirectErrorStream(true).start()
-        val out = p.inputStream.bufferedReader().readText()
-        p.waitFor()
-        out.contains("OK")
-    } catch (e: Throwable) { 
-        e.printStackTrace()
-        false 
     }
 }

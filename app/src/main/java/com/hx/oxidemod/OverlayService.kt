@@ -20,8 +20,6 @@ class OverlayService : Service() {
     private lateinit var panelParams: WindowManager.LayoutParams
     private val engine = PatchEngine()
     private var infoText: TextView? = null
-    private var infoRefreshThread: Thread? = null
-    @Volatile private var alive = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -31,19 +29,10 @@ class OverlayService : Service() {
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         engine.start()
         showButton()
-        startInfoLoop()
-        alive = true
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == "stop") stopSelf()
-        return START_STICKY
     }
 
     override fun onDestroy() {
-        alive = false
         engine.stop()
-        infoRefreshThread?.interrupt()
         removeViews()
         super.onDestroy()
     }
@@ -100,12 +89,13 @@ class OverlayService : Service() {
     private fun showPanel() {
         val ll = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(32, 32, 32, 32)
-            setBackgroundColor(Color.argb(220, 15, 15, 15))
+            setPadding(40, 40, 40, 40)
+            setBackgroundColor(Color.argb(230, 15, 15, 15))
         }
-        ll.addView(TextView(this).apply { text = "oxide mod"; setTextColor(Color.WHITE); textSize = 16f; setPadding(0, 0, 0, 12) })
+        ll.addView(TextView(this).apply { text = "oxide mod v2"; setTextColor(Color.WHITE); textSize = 16f; setPadding(0, 0, 0, 12) })
         infoText = TextView(this).apply { setTextColor(Color.LTGRAY); textSize = 11f; setPadding(0, 0, 0, 12) }
         ll.addView(infoText)
+        
         fun cb(l: String, i: Boolean, f: (Boolean) -> Unit) {
             ll.addView(CheckBox(this).apply {
                 text = l; setTextColor(Color.WHITE); isChecked = i
@@ -115,8 +105,9 @@ class OverlayService : Service() {
         cb("freeze health", engine.enabledHealth) { engine.enabledHealth = it }
         cb("freeze ammo",   engine.enabledAmmo)   { engine.enabledAmmo = it }
         cb("speed",         engine.enabledSpeed)  { engine.enabledSpeed = it }
+        
         ll.addView(TextView(this).apply {
-            text = "close"; setTextColor(Color.parseColor("#ff5555")); setPadding(0, 12, 0, 0)
+            text = "❌ ВИМКНУТИ МОД"; setTextColor(Color.parseColor("#ff5555")); textSize = 14f; setPadding(0, 20, 0, 0)
             setOnClickListener { stopSelf() }
         })
         panelParams = WindowManager.LayoutParams(
@@ -127,35 +118,31 @@ class OverlayService : Service() {
             PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.START; x = 200; y = 300 }
         panelView = ll
         wm.addView(ll, panelParams)
-        refreshInfo()
+        
+        // Оновлення статусу
+        val handler = android.os.Handler(mainLooper)
+        handler.post(object : Runnable {
+            override fun run() {
+                if (panelView == null) return
+                val pid = engine.pidNow(); val base = engine.baseNow()
+                infoText?.text = when {
+                    pid > 0 && base != 0L -> "pid $pid\nbase 0x${java.lang.Long.toHexString(base)}"
+                    pid > 0                 -> "pid $pid\nwaiting for ${Config.MODULE}"
+                    else                    -> "waiting for ${Config.PACKAGE}"
+                }
+                handler.postDelayed(this, 500)
+            }
+        })
     }
 
     private fun removePanel() {
         panelView?.let { try { wm.removeView(it) } catch (_: Throwable) {} }
         panelView = null; infoText = null
     }
+    
     private fun removeViews() {
         removePanel()
         buttonView?.let { try { wm.removeView(it) } catch (_: Throwable) {} }
         buttonView = null
-    }
-    private fun startInfoLoop() {
-        infoRefreshThread = Thread {
-            while (alive) {
-                try { refreshInfo() } catch (_: Throwable) {}
-                try { Thread.sleep(500) } catch (_: InterruptedException) { break }
-            }
-        }.also { it.isDaemon = true; it.start() }
-    }
-    private fun refreshInfo() {
-        val t = infoText ?: return
-        val pid = engine.pidNow(); val base = engine.baseNow()
-        android.os.Handler(mainLooper).post {
-            t.text = when {
-                pid > 0 && base != 0L -> "pid $pid\nbase 0x${java.lang.Long.toHexString(base)}"
-                pid > 0                 -> "pid $pid\nwaiting for ${Config.MODULE}"
-                else                    -> "waiting for ${Config.PACKAGE}"
-            }
-        }
     }
 }

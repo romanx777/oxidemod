@@ -13,7 +13,11 @@ class RootHelper private constructor() {
     fun start(helperPath: String): Boolean = synchronized(lock) {
         stop()
         try {
+            // Запускаємо бінарник прямо з кешу через su
             val p = ProcessBuilder("su", "-c", helperPath).redirectErrorStream(true).start()
+            Thread.sleep(300) // чекаємо трохи, щоб зловити відмову
+            if (!p.isAlive) return false
+            
             proc = p
             stdin = p.outputStream.bufferedWriter()
             stdout = p.inputStream.bufferedReader()
@@ -27,10 +31,9 @@ class RootHelper private constructor() {
         proc = null; stdin = null; stdout = null
     }
 
-    fun isRunning(): Boolean = proc?.isAlive == true
-
     fun read(pid: Int, addr: Long, size: Int): ByteArray? = synchronized(lock) {
-        val i = stdin ?: return null; val o = stdout ?: return null
+        val i = stdin ?: return null
+        val o = stdout ?: return null
         try {
             i.write("r $pid ${toHexString(addr)} $size\n"); i.flush()
             val r = o.readLine() ?: return null
@@ -40,7 +43,8 @@ class RootHelper private constructor() {
     }
 
     fun write(pid: Int, addr: Long, data: ByteArray): Boolean = synchronized(lock) {
-        val i = stdin ?: return false; val o = stdout ?: return false
+        val i = stdin ?: return false
+        val o = stdout ?: return false
         try {
             i.write("w $pid ${toHexString(addr)} ${bytesToHex(data)}\n"); i.flush()
             o.readLine() == "OK"
