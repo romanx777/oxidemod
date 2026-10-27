@@ -46,7 +46,7 @@ class OverlayService : Service() {
                 .createNotificationChannel(NotificationChannel("hx", "mod", NotificationManager.IMPORTANCE_LOW))
         }
         return Notification.Builder(this, "hx")
-            .setContentTitle("OXIDE TOOLS").setContentText("running")
+            .setContentTitle("oxide mod").setContentText("running")
             .setSmallIcon(android.R.drawable.ic_menu_manage).build()
     }
 
@@ -105,7 +105,7 @@ class OverlayService : Service() {
         val mainLayout = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#0F0F0F")) // Темний фон
+                setColor(Color.parseColor("#0F0F0F"))
                 cornerRadius = dp(16).toFloat()
                 setStroke(dp(1), Color.parseColor("#2C2C2C"))
             }
@@ -116,8 +116,9 @@ class OverlayService : Service() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(16), dp(16), dp(16))
         }
+
         header.addView(TextView(ctx).apply {
-            text = "OXIDE TOOLS"
+            text = "CHEAT MENU"
             setTextColor(Color.parseColor("#007AFF"))
             textSize = 16f
             setTypeface(null, Typeface.BOLD)

@@ -21,9 +21,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Налаштування LibSU (таймаут 10 сек)
-        Shell.enableVerboseLogging = true
-        Shell.setDefaultBuilder(Shell.Builder.create().setFlags(Shell.FLAG_REDIRECT_STDERR).setTimeout(10))
+        Shell.setDefaultBuilder(Shell.Builder.create().setFlags(Shell.FLAG_REDIRECT_STDERR).setTimeout(15))
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -67,36 +65,33 @@ class MainActivity : Activity() {
 
             Thread {
                 try {
-                    // LibSU сам викличе Magisk і зачекає
+                    // Прімусовий виклик рута
                     val shell = Shell.getShell()
-                    if (!shell.isRoot) {
+                    if (shell.isRoot) {
+                        val tmp = File(cacheDir, "hx_helper")
+                        assets.open("helper").use { it.copyTo(tmp.outputStream()) }
+                        tmp.setExecutable(true)
+
+                        Shell.cmd("cp ${tmp.absolutePath} /data/local/tmp/hx_helper").exec()
+                        Shell.cmd("chmod 755 /data/local/tmp/hx_helper").exec()
+
+                        runOnUiThread {
+                            tv.text = "УСПІХ!\nШукай острів зверху."
+                            startForegroundService(Intent(this, OverlayService::class.java))
+                            finish()
+                        }
+                    } else {
                         runOnUiThread {
                             btn.isEnabled = true
                             btn.text = "СПРОБУВАТИ ЩЕ"
                             tv.text = "ПОМИЛКА: ROOT НЕ НАДАНО"
                         }
-                        return@Thread
                     }
-
-                    val tmp = File(cacheDir, "hx_helper")
-                    assets.open("helper").use { it.copyTo(tmp.outputStream()) }
-                    tmp.setExecutable(true)
-
-                    // Копіюємо файл
-                    Shell.cmd("cp ${tmp.absolutePath} /data/local/tmp/hx_helper").exec()
-                    Shell.cmd("chmod 755 /data/local/tmp/hx_helper").exec()
-
-                    runOnUiThread {
-                        tv.text = "УСПІХ!\nШукай острів зверху."
-                        startForegroundService(Intent(this, OverlayService::class.java))
-                        finish()
-                    }
-
                 } catch (e: Exception) {
                     runOnUiThread {
                         btn.isEnabled = true
                         btn.text = "СПРОБУВАТИ ЩЕ"
-                        tv.text = "ПОМИЛКА: ${e.message}"
+                        tv.text = "ТАЙМ-АУТ: Magisk не відповів.\nПеревір налаштування Magisk."
                     }
                 }
             }.start()
