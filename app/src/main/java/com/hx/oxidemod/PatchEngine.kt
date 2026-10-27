@@ -54,8 +54,6 @@ object PatchEngine {
             if (moduleBase == 0L) return
         }
         
-        // ТУТ БУДЕ ЛОГІКА РЕАЛЬНИХ ФУНКЦІЙ.
-        // Поки offset-и нульові - воно нічого не робить.
         val chain = Config.kLocalPlayerChain
         if (chain.isEmpty() || chain[0] == 0L) return
         
@@ -65,12 +63,10 @@ object PatchEngine {
             if (p == 0L) return
             addr = p + chain[i]
         }
-        val player = addr
+        val playerAddr = addr // ТУТ БУЛО ВИПРАВЛЕНО (додано Addr)
 
-        if (player.health) MemAccess.writeInt(pid, player + Config.kHealthOff, Config.kHealthValue)
-        if (player.ammo)   MemAccess.writeInt(pid, player + Config.kAmmoOff,   Config.kAmmoValue)
-        if (player.speed)  MemAccess.writeFloat(pid, player + Config.kSpeedOff, Config.kSpeedValue)
-        
-        // Для ESP/Visuals тут буде логіка читання позицій гравців та малювання оверлею
+        if (player.health) MemAccess.writeInt(pid, playerAddr + Config.kHealthOff, Config.kHealthValue)
+        if (player.ammo)   MemAccess.writeInt(pid, playerAddr + Config.kAmmoOff,   Config.kAmmoValue)
+        if (player.speed)  MemAccess.writeFloat(pid, playerAddr + Config.kSpeedOff, Config.kSpeedValue)
     }
 }
