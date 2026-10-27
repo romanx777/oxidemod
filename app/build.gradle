@@ -24,3 +24,6 @@ android {
         }
     }
 }
+dependencies {
+    implementation 'com.github.topjohnwu.libsu:core:5.2.2'
+}

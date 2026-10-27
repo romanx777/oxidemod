@@ -14,12 +14,16 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import com.topjohnwu.superuser.Shell
 import java.io.File
-import java.util.concurrent.TimeUnit
 
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Налаштування LibSU (таймаут 10 сек)
+        Shell.enableVerboseLogging = true
+        Shell.setDefaultBuilder(Shell.Builder.create().setFlags(Shell.FLAG_REDIRECT_STDERR).setTimeout(10))
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -63,39 +67,31 @@ class MainActivity : Activity() {
 
             Thread {
                 try {
-                    val tmp = File(cacheDir, "hx_helper")
-                    assets.open("helper").use { it.copyTo(tmp.outputStream()) }
-                    tmp.setExecutable(true)
-
-                    val p = ProcessBuilder("su", "-c", "cp ${tmp.absolutePath} /data/local/tmp/hx_helper && chmod 755 /data/local/tmp/hx_helper && echo OK")
-                        .redirectErrorStream(true).start()
-
-                    // Чекаємо максимум 10 секунд
-                    val finished = p.waitFor(10, TimeUnit.SECONDS)
-                    if (!finished) {
-                        p.destroy()
+                    // LibSU сам викличе Magisk і зачекає
+                    val shell = Shell.getShell()
+                    if (!shell.isRoot) {
                         runOnUiThread {
                             btn.isEnabled = true
                             btn.text = "СПРОБУВАТИ ЩЕ"
-                            tv.text = "ПОМИЛКА: MAGISK НЕ ВІДПОВІДАЄ\nЗайди в Magisk і дозволь вручну."
+                            tv.text = "ПОМИЛКА: ROOT НЕ НАДАНО"
                         }
                         return@Thread
                     }
 
-                    val out = p.inputStream.bufferedReader().readText()
-                    if (out.contains("OK")) {
-                        runOnUiThread {
-                            tv.text = "УСПІХ!\nШукай острів зверху."
-                            startForegroundService(Intent(this, OverlayService::class.java))
-                            finish()
-                        }
-                    } else {
-                        runOnUiThread {
-                            btn.isEnabled = true
-                            btn.text = "СПРОБУВАТИ ЩЕ"
-                            tv.text = "ПОМИЛКА ROOT: $out"
-                        }
+                    val tmp = File(cacheDir, "hx_helper")
+                    assets.open("helper").use { it.copyTo(tmp.outputStream()) }
+                    tmp.setExecutable(true)
+
+                    // Копіюємо файл
+                    Shell.cmd("cp ${tmp.absolutePath} /data/local/tmp/hx_helper").exec()
+                    Shell.cmd("chmod 755 /data/local/tmp/hx_helper").exec()
+
+                    runOnUiThread {
+                        tv.text = "УСПІХ!\nШукай острів зверху."
+                        startForegroundService(Intent(this, OverlayService::class.java))
+                        finish()
                     }
+
                 } catch (e: Exception) {
                     runOnUiThread {
                         btn.isEnabled = true
