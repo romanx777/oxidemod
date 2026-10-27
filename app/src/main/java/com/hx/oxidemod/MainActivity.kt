@@ -14,6 +14,8 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import java.io.File
+import java.util.concurrent.TimeUnit
 
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,15 +59,51 @@ class MainActivity : Activity() {
 
             btn.isEnabled = false
             btn.text = "ЗАПУСК..."
-            tv.text = "ЗАПУСК ОВЕРЛЕЮ...\n(Підтверди RooT в Magisk)"
+            tv.text = "ЗАПИТ ROOT (Дай дозвіл в Magisk)..."
 
-            // Просто запускаємо сервіс. Він сам викличе Magisk, коли почне шукати гру
-            startForegroundService(Intent(this, OverlayService::class.java))
+            Thread {
+                try {
+                    val tmp = File(cacheDir, "hx_helper")
+                    assets.open("helper").use { it.copyTo(tmp.outputStream()) }
+                    tmp.setExecutable(true)
 
-            // Закриваємо додаток через 2 секунди, щоб він не висів
-            android.os.Handler(mainLooper).postDelayed({
-                finish()
-            }, 2000)
+                    val p = ProcessBuilder("su", "-c", "cp ${tmp.absolutePath} /data/local/tmp/hx_helper && chmod 755 /data/local/tmp/hx_helper && echo OK")
+                        .redirectErrorStream(true).start()
+
+                    // Чекаємо максимум 10 секунд
+                    val finished = p.waitFor(10, TimeUnit.SECONDS)
+                    if (!finished) {
+                        p.destroy()
+                        runOnUiThread {
+                            btn.isEnabled = true
+                            btn.text = "СПРОБУВАТИ ЩЕ"
+                            tv.text = "ПОМИЛКА: MAGISK НЕ ВІДПОВІДАЄ\nЗайди в Magisk і дозволь вручну."
+                        }
+                        return@Thread
+                    }
+
+                    val out = p.inputStream.bufferedReader().readText()
+                    if (out.contains("OK")) {
+                        runOnUiThread {
+                            tv.text = "УСПІХ!\nШукай острів зверху."
+                            startForegroundService(Intent(this, OverlayService::class.java))
+                            finish()
+                        }
+                    } else {
+                        runOnUiThread {
+                            btn.isEnabled = true
+                            btn.text = "СПРОБУВАТИ ЩЕ"
+                            tv.text = "ПОМИЛКА ROOT: $out"
+                        }
+                    }
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        btn.isEnabled = true
+                        btn.text = "СПРОБУВАТИ ЩЕ"
+                        tv.text = "ПОМИЛКА: ${e.message}"
+                    }
+                }
+            }.start()
         }
 
         btn.setOnClickListener { checkAndStart() }
@@ -74,8 +112,6 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1) {
-            recreate()
-        }
+        if (requestCode == 1) recreate()
     }
 }

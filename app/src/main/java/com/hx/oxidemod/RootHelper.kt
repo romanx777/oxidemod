@@ -13,11 +13,7 @@ class RootHelper private constructor() {
     fun start(helperPath: String): Boolean = synchronized(lock) {
         stop()
         try {
-            // Запускаємо бінарник прямо з кешу через su
             val p = ProcessBuilder("su", "-c", helperPath).redirectErrorStream(true).start()
-            Thread.sleep(300) // чекаємо трохи, щоб зловити відмову
-            if (!p.isAlive) return false
-            
             proc = p
             stdin = p.outputStream.bufferedWriter()
             stdout = p.inputStream.bufferedReader()
@@ -31,24 +27,37 @@ class RootHelper private constructor() {
         proc = null; stdin = null; stdout = null
     }
 
-    fun read(pid: Int, addr: Long, size: Int): ByteArray? = synchronized(lock) {
+    fun isRunning(): Boolean = proc?.isAlive == true
+
+    fun sendCmd(cmd: String): String? = synchronized(lock) {
         val i = stdin ?: return null
         val o = stdout ?: return null
         try {
-            i.write("r $pid ${toHexString(addr)} $size\n"); i.flush()
-            val r = o.readLine() ?: return null
-            if (!r.startsWith("OK ")) return null
-            hexToBytes(r.substring(3))
+            i.write("$cmd\n"); i.flush()
+            return o.readLine()
         } catch (_: Throwable) { null }
     }
 
-    fun write(pid: Int, addr: Long, data: ByteArray): Boolean = synchronized(lock) {
-        val i = stdin ?: return false
-        val o = stdout ?: return false
-        try {
-            i.write("w $pid ${toHexString(addr)} ${bytesToHex(data)}\n"); i.flush()
-            o.readLine() == "OK"
-        } catch (_: Throwable) { false }
+    fun read(pid: Int, addr: Long, size: Int): ByteArray? {
+        val r = sendCmd("r $pid ${toHexString(addr)} $size") ?: return null
+        if (!r.startsWith("OK ")) return null
+        return hexToBytes(r.substring(3))
+    }
+
+    fun write(pid: Int, addr: Long, data: ByteArray): Boolean {
+        return sendCmd("w $pid ${toHexString(addr)} ${bytesToHex(data)}") == "OK"
+    }
+
+    fun getPid(pkg: String): Int {
+        val r = sendCmd("pid $pkg") ?: return 0
+        if (!r.startsWith("OK ")) return 0
+        return r.substring(3).toIntOrNull() ?: 0
+    }
+
+    fun getBase(pid: Int, module: String): Long {
+        val r = sendCmd("base $pid $module") ?: return 0L
+        if (!r.startsWith("OK ")) return 0L
+        return r.substring(3).toLongOrNull(16) ?: 0L
     }
 
     companion object {

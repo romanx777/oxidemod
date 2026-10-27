@@ -4,23 +4,8 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 object MemAccess {
-    fun findPid(pkg: String): Int = try {
-        val p = ProcessBuilder("su", "-c", "pidof $pkg").start()
-        val out = p.inputStream.bufferedReader().readText().trim()
-        p.waitFor()
-        out.split(' ').firstOrNull()?.toIntOrNull() ?: 0
-    } catch (_: Throwable) { 0 }
-
-    fun moduleBase(pid: Int, module: String): Long = try {
-        val p = ProcessBuilder("su", "-c", "cat /proc/$pid/maps").start()
-        val lines = p.inputStream.bufferedReader().readLines()
-        p.waitFor()
-        var found = 0L
-        for (line in lines) {
-            if (line.endsWith(module)) { found = line.substringBefore('-').toLong(16); break }
-        }
-        found
-    } catch (_: Throwable) { 0L }
+    fun findPid(pkg: String): Int = RootHelper.instance.getPid(pkg)
+    fun moduleBase(pid: Int, module: String): Long = RootHelper.instance.getBase(pid, module)
 
     private fun le(n: Int) = ByteBuffer.allocate(n).order(ByteOrder.LITTLE_ENDIAN)
 
