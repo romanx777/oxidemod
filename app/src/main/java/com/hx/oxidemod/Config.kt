@@ -1,8 +1,8 @@
 package com.hx.oxidemod
 
 object Config {
-    const val PACKAGE = "com.oxide.game"    // FILL: target package
-    const val MODULE  = "libil2cpp.so"      // FILL: main module
+    const val PACKAGE = "com.catsbit.oxidesurvivalisland" // правильний пакет з твого скріншота
+    const val MODULE  = "libil2cpp.so"                    // головний модуль (пізніше перевіримо)
 
     val kLocalPlayerChain = longArrayOf(0x0L) // FILL: [static, ptr1, ..., finalOff]
     const val kHealthOff  = 0x0L              // FILL

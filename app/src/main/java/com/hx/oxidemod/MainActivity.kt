@@ -11,19 +11,35 @@ import java.io.File
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
         if (!Settings.canDrawOverlays(this)) {
-            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")))
-            Toast.makeText(this, "дозволь overlay, потім повернись", Toast.LENGTH_LONG).show()
+            try {
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                Toast.makeText(this, "Увімкни 'Поверх інших додатків' і повернись", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Дай дозвіл на Overlay в налаштуваннях вручну", Toast.LENGTH_LONG).show()
+            }
             return
         }
-        if (!deployHelper()) { Toast.makeText(this, "helper deploy failed (root?)", Toast.LENGTH_LONG).show(); return }
-        if (!RootHelper.instance.start("/data/local/tmp/hx_helper")) {
-            Toast.makeText(this, "su start failed", Toast.LENGTH_LONG).show(); return
-        }
-        startForegroundService(Intent(this, OverlayService::class.java))
-        Toast.makeText(this, "running", Toast.LENGTH_SHORT).show()
-        finish()
+
+        Toast.makeText(this, "Запускаю... зачекай", Toast.LENGTH_SHORT).show()
+
+        // Запускаємо у фоні, щоб екран не зависав
+        Thread {
+            if (!deployHelper()) {
+                runOnUiThread { Toast.makeText(this, "Помилка копіювання (потрібен root)", Toast.LENGTH_LONG).show() }
+                return@Thread
+            }
+            if (!RootHelper.instance.start("/data/local/tmp/hx_helper")) {
+                runOnUiThread { Toast.makeText(this, "Відмовлено в root", Toast.LENGTH_LONG).show() }
+                return@Thread
+            }
+            runOnUiThread {
+                startForegroundService(Intent(this, OverlayService::class.java))
+                Toast.makeText(this, "Працює! Шукай кнопку ≡", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+        }.start()
     }
 
     private fun deployHelper(): Boolean = try {
