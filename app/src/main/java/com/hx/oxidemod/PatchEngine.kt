@@ -2,18 +2,12 @@ package com.hx.oxidemod
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.math.sqrt
 
 object PatchEngine {
     @Volatile var playersNearby: Int = 0
-    object visuals {
-        @Volatile var box = false
-        @Volatile var distance = 150f
-        @Volatile var fovEnabled = false
-        @Volatile var fovRadius = 200f
-    }
+    @Volatile var closestPlayerDist: Int = 0
 
-    data class EnemyData(val screenX: Float, val screenY: Float, val distance: Float)
-    @Volatile var enemiesToDraw = mutableListOf<EnemyData>()
     @Volatile private var pid: Int = 0
     @Volatile private var moduleBase: Long = 0L
     @Volatile private var running = false
@@ -28,19 +22,10 @@ object PatchEngine {
             }
         }.also { it.isDaemon = true; it.start() }
     }
-    fun stop() { running = false }
-    fun pidNow(): Int = pid
 
-    private fun worldToScreen(pos: FloatArray, matrix: FloatArray, width: Float, height: Float): Pair<Float, Float>? {
-        val w = matrix[3] * pos[0] + matrix[7] * pos[1] + matrix[11] * pos[2] + matrix[15]
-        if (w < 0.098f) return null
-        val x = matrix[0] * pos[0] + matrix[4] * pos[1] + matrix[8] * pos[2] + matrix[12]
-        val y = matrix[1] * pos[0] + matrix[5] * pos[1] + matrix[9] * pos[2] + matrix[13]
-        return Pair((width / 2f) * (1f + x / w), (height / 2f) * (1f - y / w))
-    }
+    fun stop() { running = false }
 
     private fun tick() {
-        if (!visuals.box) return
         val np = MemAccess.findPid(Config.PACKAGE)
         if (np != pid) { pid = np; moduleBase = 0L }
         if (pid <= 0) return
@@ -48,37 +33,41 @@ object PatchEngine {
             moduleBase = MemAccess.moduleBase(pid, Config.MODULE)
             if (moduleBase == 0L) return
         }
-        if (Config.kPlayerListBase == 0L || Config.kViewMatrixOff == 0L) return
 
-        val matrix = FloatArray(16)
-        val matrixBytes = RootHelper.instance.read(pid, moduleBase + Config.kViewMatrixOff, 64) ?: return
-        val buf = ByteBuffer.wrap(matrixBytes).order(ByteOrder.LITTLE_ENDIAN)
-        for (i in 0 until 16) matrix[i] = buf.float
-
+        // Читаємо вказівник на статичний список гравців
         var listPtr = MemAccess.readLong(pid, moduleBase + Config.kPlayerListBase) ?: return
         if (listPtr == 0L) return
+        
+        // Отримуємо кількість гравців
         val count = MemAccess.readInt(pid, listPtr + 0x20) ?: return
         if (count <= 0 || count > 100) return
         playersNearby = count
 
+        // Вказівник на масив об'єктів
         val itemsPtr = MemAccess.readLong(pid, listPtr + 0x10) ?: return
         if (itemsPtr == 0L) return
 
-        val tempList = mutableListOf<EnemyData>()
-        val width = android.content.res.Resources.getSystem().displayMetrics.widthPixels.toFloat()
-        val height = android.content.res.Resources.getSystem().displayMetrics.heightPixels.toFloat()
+        // Беремо позицію першого гравця (вважаємо, що це ти)
+        val player0Ptr = MemAccess.readLong(pid, itemsPtr) ?: return
+        val pos0Bytes = RootHelper.instance.read(pid, player0Ptr + Config.kPositionOff, 12) ?: return
+        val buf0 = ByteBuffer.wrap(pos0Bytes).order(ByteOrder.LITTLE_ENDIAN)
+        val myX = buf0.float; val myY = buf0.float; val myZ = buf0.float
 
-        for (i in 0 until count) {
-            val playerPtr = MemAccess.readLong(pid, itemsPtr + (i * 8L)) ?: continue
-            if (playerPtr == 0L) continue
-            val observerPtr = MemAccess.readLong(pid, playerPtr + Config.kNetworkObserverOff) ?: continue
-            if (observerPtr == 0L) continue
-            val posBytes = RootHelper.instance.read(pid, observerPtr + Config.kPositionOff, 12) ?: continue
-            val posBuf = ByteBuffer.wrap(posBytes).order(ByteOrder.LITTLE_ENDIAN)
-            val pos = floatArrayOf(posBuf.float, posBuf.float, posBuf.float)
-            val screenPos = worldToScreen(pos, matrix, width, height)
-            if (screenPos != null) tempList.add(EnemyData(screenPos.first, screenPos.second, 0f))
+        var minDist = 9999.0f
+
+        // Рахуємо відстань до інших
+        for (i in 1 until count) {
+            val pPtr = MemAccess.readLong(pid, itemsPtr + (i * 8L)) ?: continue
+            if (pPtr == 0L) continue
+            
+            val pBytes = RootHelper.instance.read(pid, pPtr + Config.kPositionOff, 12) ?: continue
+            val pBuf = ByteBuffer.wrap(pBytes).order(ByteOrder.LITTLE_ENDIAN)
+            val ex = pBuf.float; val ey = pBuf.float; val ez = pBuf.float
+            
+            val dist = sqrt((myX - ex) * (myX - ex) + (myY - ey) * (myY - ey) + (myZ - ez) * (myZ - ez))
+            if (dist < minDist) minDist = dist
         }
-        enemiesToDraw = tempList
+        
+        closestPlayerDist = if (minDist == 9999.0f) 0 else minDist.toInt()
     }
 }
