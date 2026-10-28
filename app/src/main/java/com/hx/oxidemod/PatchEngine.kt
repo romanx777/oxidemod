@@ -2,12 +2,12 @@ package com.hx.oxidemod
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.sqrt
 
 object PatchEngine {
     @Volatile var playersNearby: Int = 0
     @Volatile var closestPlayerDist: Int = 0
-    @Volatile var debugInfo: String = "wait..."
+    @Volatile var debugInfo: String = "searching..."
+    @Volatile var isAppRunning = false
 
     object visuals {
         @Volatile var box = false
@@ -37,21 +37,38 @@ object PatchEngine {
     fun stop() { running = false }
 
     private fun tick() {
-        val np = MemAccess.findPid(Config.PACKAGE)
+        val np = RootHelper.instance.getPid(Config.PACKAGE)
         if (np != pid) { pid = np; moduleBase = 0L }
-        if (pid <= 0) { debugInfo = "No PID"; return }
-        if (moduleBase == 0L) {
-            moduleBase = MemAccess.moduleBase(pid, Config.MODULE)
-            if (moduleBase == 0L) { debugInfo = "No Base"; return }
+        
+        if (pid <= 0) {
+            isAppRunning = false
+            // Якщо гра не знайдена, виводимо список процесів для дебагу (перші 3)
+            try {
+                val p = Runtime.getRuntime().exec("su -c ps -A").start()
+                val out = p.inputStream.bufferedReader().readLines()
+                val filtered = out.filter { it.contains("catsbit") || it.contains("oxide") || it.contains("unity") }
+                if (filtered.isNotEmpty()) {
+                    debugInfo = "FOUND IN PS: ${filtered.first().take(30)}"
+                } else {
+                    debugInfo = "Game process not found.\nCheck package name."
+                }
+            } catch (_: Exception) { debugInfo = "No PID & No Root" }
+            return
         }
 
-        val listA = MemAccess.readLong(pid, moduleBase + 0x8L) ?: 0L
-        val listB = MemAccess.readLong(pid, moduleBase + 0x10L) ?: 0L
-        val listC = MemAccess.readLong(pid, moduleBase + 0x0L) ?: 0L
+        isAppRunning = true
+        if (moduleBase == 0L) {
+            moduleBase = RootHelper.instance.getBase(pid, Config.MODULE)
+            if (moduleBase == 0L) { debugInfo = "PID: $pid\nNo Base module"; return }
+        }
 
-        debugInfo = "0x8: ${java.lang.Long.toHexString(listA)}\n0x10: ${java.lang.Long.toHexString(listB)}\n0x0: ${java.lang.Long.toHexString(listC)}"
+        // Читаємо списки
+        val listA = RootHelper.instance.read(pid, moduleBase + 0x8L, 8)?.let { ByteBuffer.wrap(it).order(ByteOrder.LITTLE_ENDIAN).long } ?: 0L
+        val listB = RootHelper.instance.read(pid, moduleBase + 0x10L, 8)?.let { ByteBuffer.wrap(it).order(ByteOrder.LITTLE_ENDIAN).long } ?: 0L
+        val listC = RootHelper.instance.read(pid, moduleBase + 0x0L, 8)?.let { ByteBuffer.wrap(it).order(ByteOrder.LITTLE_ENDIAN).long } ?: 0L
+
+        debugInfo = "PID: $pid\n0x8: ${java.lang.Long.toHexString(listA)}\n0x10: ${java.lang.Long.toHexString(listB)}\n0x0: ${java.lang.Long.toHexString(listC)}"
         
-        // Поки що нічого не читаємо, тільки дивимось на адреси
         playersNearby = 0
         closestPlayerDist = 0
     }
