@@ -42,14 +42,15 @@ class RootHelper private constructor() {
         return hexToBytes(r.substring(3))
     }
 
+    fun write(pid: Int, addr: Long, data: ByteArray): Boolean {
+        return sendCmd("w $pid ${toHexString(addr)} ${bytesToHex(data)}") == "OK"
+    }
+
     fun getPid(pkg: String): Int {
-        // 1. Пробуємо через хелпер
         val r = sendCmd("pid $pkg")
         if (r != null && r.startsWith("OK ")) {
             return r.substring(3).toIntOrNull() ?: 0
         }
-        
-        // 2. Якщо хелпер не працює, шукаємо через звичайний su (як в терміналі)
         return try {
             val p = Runtime.getRuntime().exec("su -c pidof $pkg").start()
             val out = p.inputStream.bufferedReader().readText().trim()
@@ -66,6 +67,17 @@ class RootHelper private constructor() {
 
     companion object {
         val instance = RootHelper()
+
+        fun bytesToHex(b: ByteArray): String {
+            val sb = StringBuilder(b.size * 2)
+            for (x in b) {
+                val v = x.toInt() and 0xff
+                sb.append("0123456789abcdef"[v ushr 4])
+                sb.append("0123456789abcdef"[v and 15])
+            }
+            return sb.toString()
+        }
+
         fun hexToBytes(s: String): ByteArray {
             require(s.length % 2 == 0)
             return ByteArray(s.length / 2) { ((Character.digit(s[it * 2], 16) shl 4) or Character.digit(s[it * 2 + 1], 16)).toByte() }
