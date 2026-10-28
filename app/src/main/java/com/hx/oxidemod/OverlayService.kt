@@ -87,7 +87,6 @@ class OverlayService : Service() {
         val handler = Handler(Looper.getMainLooper())
         handler.post(object : Runnable { 
             override fun run() { 
-                // ТЕПЕР ТУТ БУДЕ ВИВОДИТИСЬ ДЕБАГ ІНФА
                 islandText?.text = PatchEngine.debugInfo
                 handler.postDelayed(this, 500) 
             } 
