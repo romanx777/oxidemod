@@ -75,7 +75,7 @@ class OverlayService : Service() {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(20), dp(10), dp(20), dp(10))
             background = GradientDrawable().apply { setColor(Color.parseColor("#000000")); cornerRadius = dp(30).toFloat(); setStroke(dp(1), Color.parseColor("#333333")) }
         }
-        islandText = TextView(ctx).apply { text = "0 ГРАВЦІВ"; setTextColor(Color.WHITE); textSize = 12f; setTypeface(null, Typeface.BOLD) }
+        islandText = TextView(ctx).apply { text = "loading..."; setTextColor(Color.WHITE); textSize = 10f; setTypeface(null, Typeface.BOLD) }
         island.addView(islandText)
         islandParams = WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= 26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE,
@@ -87,8 +87,9 @@ class OverlayService : Service() {
         val handler = Handler(Looper.getMainLooper())
         handler.post(object : Runnable { 
             override fun run() { 
-                islandText?.text = "${PatchEngine.playersNearby} ГР. | ${PatchEngine.closestPlayerDist}м"
-                handler.postDelayed(this, 1000) 
+                // ТЕПЕР ТУТ БУДЕ ВИВОДИТИСЬ ДЕБАГ ІНФА
+                islandText?.text = PatchEngine.debugInfo
+                handler.postDelayed(this, 500) 
             } 
         })
     }
